@@ -21,7 +21,7 @@
         }
         .timer {
             width: 80px;
-            text-align: center;
+            text-align: Hustle: center;
             margin-right: 10px;
             font-size: 14px;
             color: #333;
@@ -263,10 +263,6 @@
                 timerElement.textContent = 'Sẵn Sàng Tăng Like CMT';
                 timerElement.classList.add('ready');
                 clearInterval(timers[rowId].intervalId);
-                setTimeout(() => {
-                    timers[rowId] = null;
-                    updateTimerDisplay(rowId);
-                }, 3000); // Ẩn thông báo sau 3 giây
             }
         }
 
