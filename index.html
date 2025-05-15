@@ -1,43 +1,4 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -57,6 +18,12 @@
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 5px;
+        }
+        .row-number {
+            width: 30px;
+            font-weight: bold;
+            text-align: center;
+            margin-right: 10px;
         }
         .text-input {
             flex: 1;
@@ -120,6 +87,7 @@
     <h1>Quản lý Text</h1>
     <div id="rows">
         <div class="row" data-id="1">
+            <span class="row-number">1</span>
             <input type="text" class="text-input" placeholder="Nhập văn bản...">
             <button class="button paste-btn" onclick="pasteText(1)">Dán</button>
             <button class="button copy-btn" onclick="copyText(1)">Copy</button>
@@ -128,6 +96,7 @@
             <span class="copy-count">Copy: 0 lần</span>
         </div>
         <div class="row" data-id="2">
+            <span class="row-number">2</span>
             <input type="text" class="text-input" placeholder="Nhập văn bản...">
             <button class="button paste-btn" onclick="pasteText(2)">Dán</button>
             <button class="button copy-btn" onclick="copyText(2)">Copy</button>
@@ -136,6 +105,7 @@
             <span class="copy-count">Copy: 0 lần</span>
         </div>
         <div class="row" data-id="3">
+            <span class="row-number">3</span>
             <input type="text" class="text-input" placeholder="Nhập văn bản...">
             <button class="button paste-btn" onclick="pasteText(3)">Dán</button>
             <button class="button copy-btn" onclick="copyText(3)">Copy</button>
@@ -144,6 +114,7 @@
             <span class="copy-count">Copy: 0 lần</span>
         </div>
         <div class="row" data-id="4">
+            <span class="row-number">4</span>
             <input type="text" class="text-input" placeholder="Nhập văn bản...">
             <button class="button paste-btn" onclick="pasteText(4)">Dán</button>
             <button class="button copy-btn" onclick="copyText(4)">Copy</button>
@@ -152,6 +123,7 @@
             <span class="copy-count">Copy: 0 lần</span>
         </div>
         <div class="row" data-id="5">
+            <span class="row-number">5</span>
             <input type="text" class="text-input" placeholder="Nhập văn bản...">
             <button class="button paste-btn" onclick="pasteText(5)">Dán</button>
             <button class="button copy-btn" onclick="copyText(5)">Copy</button>
@@ -160,6 +132,7 @@
             <span class="copy-count">Copy: 0 lần</span>
         </div>
         <div class="row" data-id="6">
+            <span class="row-number">6</span>
             <input type="text" class="text-input" placeholder="Nhập văn bản...">
             <button class="button paste-btn" onclick="pasteText(6)">Dán</button>
             <button class="button copy-btn" onclick="copyText(6)">Copy</button>
@@ -168,6 +141,7 @@
             <span class="copy-count">Copy: 0 lần</span>
         </div>
         <div class="row" data-id="7">
+            <span class="row-number">7</span>
             <input type="text" class="text-input" placeholder="Nhập văn bản...">
             <button class="button paste-btn" onclick="pasteText(7)">Dán</button>
             <button class="button copy-btn" onclick="copyText(7)">Copy</button>
