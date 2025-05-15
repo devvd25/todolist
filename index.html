@@ -219,7 +219,7 @@
         let pasteCounts = Array(8).fill(0); // Mảng lưu số lần dán cho 7 hàng (1-7)
         let copyCounts = Array(8).fill(0); // Mảng lưu số lần copy cho 7 hàng (1-7)
         let timers = Array(8).fill(null); // Mảng lưu trạng thái đồng hồ: { timeLeft, intervalId, waitingForFocus }
-        let uniqueLinks = new Set(); // Lưu trữ các link duy nhất
+        let uniqueLinks = new Set(); // Set lưu các link duy nhất
 
         function updateTotalPaste() {
             const total = pasteCounts.reduce((sum, count) => sum + count, 0);
@@ -234,12 +234,12 @@
         }
 
         function updateTotalLinks() {
-            document.querySelector('.total-links').textContent = `Tổng số link hôm nay: ${uniqueLinks.size}`;
+            document.querySelector('.total-links').textContent = `Tổng số link duy nhất: ${uniqueLinks.size}`;
         }
 
-        function isValidLink(text) {
-            const urlPattern = /^(https?:\/\/[^\s]+)/;
-            return urlPattern.test(text.trim());
+        function isValidUrl(string) {
+            const urlPattern = /^(https?:\/\/[^\s/$.?#].[^\s]*)$/i;
+            return urlPattern.test(string.trim());
         }
 
         function updateCopyDisplay(rowId) {
@@ -328,6 +328,8 @@
 
             if (savedDate !== currentDate) {
                 localStorage.removeItem('textManagerData');
+                uniqueLinks.clear();
+                updateTotalLinks();
                 console.log('Dữ liệu đã bị xóa vì sang ngày mới'); // Gỡ lỗi
             }
         }
@@ -378,6 +380,7 @@
             // Khôi phục danh sách link duy nhất
             uniqueLinks = new Set(savedLinks || []);
             updateTotalLinks();
+
             updateTotalPaste();
             console.log('Dữ liệu đã được khôi phục từ localStorage'); // Gỡ lỗi
         }
@@ -390,18 +393,18 @@
                 input.value = text;
                 pasteCounts[rowId]++;
                 
+                // Kiểm tra và thêm link vào uniqueLinks
+                if (isValidUrl(text)) {
+                    uniqueLinks.add(text.trim());
+                    updateTotalLinks();
+                }
+
                 // Cập nhật số lần copy khi dán
                 if (pasteCounts[rowId] > 1) {
                     copyCounts[rowId] = 0; // Reset số lần copy nếu không phải lần dán đầu
                 }
                 copyCounts[rowId]++; // Tăng số lần copy lên 1
                 
-                // Cập nhật danh sách link duy nhất
-                if (isValidLink(text)) {
-                    uniqueLinks.add(text.trim());
-                    updateTotalLinks();
-                }
-
                 row.querySelector('.paste-count').textContent = `Dán: ${pasteCounts[rowId]} lần`;
                 updateCopyDisplay(rowId);
 
@@ -458,8 +461,6 @@
             const row = document.querySelector(`.row[data-id="${rowId}"]`);
             const input = row.querySelector('.text-input');
             const noteInput = row.querySelector('.note-input');
-            const deletedText = input.value;
-
             input.value = '';
             noteInput.value = ''; // Xóa cả ghi chú
             pasteCounts[rowId] = 0;
@@ -467,18 +468,6 @@
             row.querySelector('.paste-count').textContent = `Dán: 0 lần`;
             resetTimer(rowId);
             updateCopyDisplay(rowId);
-
-            // Cập nhật danh sách link duy nhất
-            if (isValidLink(deletedText)) {
-                uniqueLinks = new Set();
-                document.querySelectorAll('.text-input').forEach(input => {
-                    if (isValidLink(input.value)) {
-                        uniqueLinks.add(input.value.trim());
-                    }
-                });
-                updateTotalLinks();
-            }
-
             console.log(`Hàng ${rowId}: Đã xóa lớp highlight, nội dung và đặt lại số lần copy`); // Gỡ lỗi
             saveData();
             updateTotalPaste();
