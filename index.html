@@ -158,10 +158,24 @@
             justify-content: space-between;
             padding: 5px 0;
             border-bottom: 1px solid #eee;
-            word-break: break-all;
         }
         .links-list li:last-child {
             border-bottom: none;
+        }
+        .link-item {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            word-break: break-all;
+        }
+        .link-url {
+            flex: 1;
+        }
+        .link-timestamp {
+            width: 60px;
+            text-align: right;
+            margin-left: 10px;
+            color: #555;
         }
         .delete-link-btn {
             background-color: #dc3545;
@@ -325,7 +339,7 @@
         let pasteCounts = Array(8).fill(0); // Mảng lưu số lần dán cho 7 hàng (1-7)
         let copyCounts = Array(8).fill(0); // Mảng lưu số lần copy cho 7 hàng (1-7)
         let timers = Array(8).fill(null); // Mảng lưu trạng thái đồng hồ: { timeLeft, intervalId, waitingForFocus }
-        let uniqueLinks = new Set(); // Set lưu các link duy nhất
+        let uniqueLinks = []; // Mảng lưu { url, timestamp }
 
         function updateTotalPaste() {
             const total = pasteCounts.reduce((sum, count) => sum + count, 0);
@@ -340,12 +354,19 @@
         }
 
         function updateTotalLinks() {
-            document.querySelector('.total-links').firstChild.textContent = `Tổng số link duy nhất: ${uniqueLinks.size} `;
+            document.querySelector('.total-links').firstChild.textContent = `Tổng số link duy nhất: ${uniqueLinks.length} `;
         }
 
         function isValidUrl(string) {
             const urlPattern = /^(https?:\/\/[^\s/$.?#].[^\s]*)$/i;
             return urlPattern.test(string.trim());
+        }
+
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            return `${hours}:${minutes}`;
         }
 
         function showLinksModal() {
@@ -354,14 +375,17 @@
             const linksList = document.querySelector('.links-list');
             linksList.innerHTML = '';
             
-            if (uniqueLinks.size === 0) {
+            if (uniqueLinks.length === 0) {
                 linksList.innerHTML = '<li>Chưa có link nào được lưu.</li>';
             } else {
-                uniqueLinks.forEach(link => {
+                uniqueLinks.forEach(linkObj => {
                     const li = document.createElement('li');
                     li.innerHTML = `
-                        <span>${link}</span>
-                        <button class="delete-link-btn" onclick="deleteLink('${link.replace(/'/g, "\\'")}')">Xóa</button>
+                        <div class="link-item">
+                            <span class="link-url">${linkObj.url}</span>
+                            <span class="link-timestamp">${formatTimestamp(linkObj.timestamp)}</span>
+                        </div>
+                        <button class="delete-link-btn" onclick="deleteLink('${linkObj.url.replace(/'/g, "\\'")}')">Xóa</button>
                     `;
                     linksList.appendChild(li);
                 });
@@ -371,16 +395,16 @@
             overlay.style.display = 'block';
         }
 
-        function deleteLink(link) {
-            uniqueLinks.delete(link);
+        function deleteLink(url) {
+            uniqueLinks = uniqueLinks.filter(linkObj => linkObj.url !== url);
             updateTotalLinks();
             saveData();
             showLinksModal(); // Cập nhật lại modal
-            console.log(`Đã xóa link: ${link}`); // Gỡ lỗi
+            console.log(`Đã xóa link: ${url}`); // Gỡ lỗi
         }
 
         function deleteAllLinks() {
-            uniqueLinks.clear();
+            uniqueLinks = [];
             updateTotalLinks();
             saveData();
             showLinksModal(); // Cập nhật lại modal
@@ -461,7 +485,7 @@
                 pasteCounts,
                 copyCounts,
                 timers: savedTimers,
-                uniqueLinks: Array.from(uniqueLinks),
+                uniqueLinks,
                 saveTimestamp: new Date().toISOString()
             };
             localStorage.setItem('textManagerData', JSON.stringify(data));
@@ -478,7 +502,7 @@
 
             if (savedDate !== currentDate) {
                 localStorage.removeItem('textManagerData');
-                uniqueLinks.clear();
+                uniqueLinks = [];
                 updateTotalLinks();
                 console.log('Dữ liệu đã bị xóa vì sang ngày mới'); // Gỡ lỗi
             }
@@ -528,7 +552,7 @@
             });
 
             // Khôi phục danh sách link duy nhất
-            uniqueLinks = new Set(savedLinks || []);
+            uniqueLinks = savedLinks || [];
             updateTotalLinks();
 
             updateTotalPaste();
@@ -545,8 +569,14 @@
                 
                 // Kiểm tra và thêm link vào uniqueLinks
                 if (isValidUrl(text)) {
-                    uniqueLinks.add(text.trim());
-                    updateTotalLinks();
+                    const trimmedUrl = text.trim();
+                    if (!uniqueLinks.some(linkObj => linkObj.url === trimmedUrl)) {
+                        uniqueLinks.push({
+                            url: trimmedUrl,
+                            timestamp: new Date().toISOString()
+                        });
+                        updateTotalLinks();
+                    }
                 }
 
                 // Cập nhật số lần copy khi dán
