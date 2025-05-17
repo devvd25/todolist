@@ -1,43 +1,4 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -108,6 +69,13 @@
         .delete-btn {
             background-color: #dc3545;
         }
+        .remove-row-btn {
+            background-color: #ff6b6b;
+            padding: 8px 12px;
+        }
+        .remove-row-btn:hover {
+            background-color: #e55a5a;
+        }
         .paste-count, .copy-count {
             margin-left: 10px;
             font-weight: bold;
@@ -154,6 +122,21 @@
         }
         .show-links-btn:hover {
             background-color: #0056b3;
+        }
+        .add-row-btn {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .add-row-btn:hover {
+            background-color: #218838;
         }
         .links-modal {
             display: none;
@@ -265,99 +248,8 @@
 </head>
 <body>
     <h1>Quản lý Text</h1>
-    <div id="rows">
-        <div class="row" data-id="1">
-            <span class="timer"></span>
-            <span class="row-number">1</span>
-            <input type="text" class="text-input" placeholder="Nhập văn bản...">
-            <button class="button paste-btn" onclick="pasteText(1)">Dán</button>
-            <button class="button copy-btn" onclick="copyText(1)">Copy</button>
-            <button class="button delete-btn" onclick="deleteText(1)">Delete</button>
-            <span class="paste-count">Dán: 0 lần</span>
-            <span class="copy-count">Copy: 0 lần</span>
-            <button class="copy-adjust-btn" onclick="adjustCopyCount(1, 1)">+</button>
-            <button class="copy-adjust-btn" onclick="adjustCopyCount(1, -1)">−</button>
-            <textarea class="note-input" placeholder="Ghi chú..."></textarea>
-        </div>
-        <div class="row" data-id="2">
-            <span class="timer"></span>
-            <span class="row-number">2</span>
-            <input type="text" class="text-input" placeholder="Nhập văn bản...">
-            <button class="button paste-btn" onclick="pasteText(2)">Dán</button>
-            <button class="button copy-btn" onclick="copyText(2)">Copy</button>
-            <button class="button delete-btn" onclick="deleteText(2)">Delete</button>
-            <span class="paste-count">Dán: 0 lần</span>
-            <span class="copy-count">Copy: 0 lần</span>
-            <button class="copy-adjust-btn" onclick="adjustCopyCount(2, 1)">+</button>
-            <button class="copy-adjust-btn" onclick="adjustCopyCount(2, -1)">−</button>
-            <textarea class="note-input" placeholder="Ghi chú..."></textarea>
-        </div>
-        <div class="row" data-id="3">
-            <span class="timer"></span>
-            <span class="row-number">3</span>
-            <input type="text" class="text-input" placeholder="Nhập văn bản...">
-            <button class="button paste-btn" onclick="pasteText(3)">Dán</button>
-            <button class="button copy-btn" onclick="copyText(3)">Copy</button>
-            <button class="button delete-btn" onclick="deleteText(3)">Delete</button>
-            <span class="paste-count">Dán: 0 lần</span>
-            <span class="copy-count">Copy: 0 lần</span>
-            <button class="copy-adjust-btn" onclick="adjustCopyCount(3, 1)">+</button>
-            <button class="copy-adjust-btn" onclick="adjustCopyCount(3, -1)">−</button>
-            <textarea class="note-input" placeholder="Ghi chú..."></textarea>
-        </div>
-        <div class="row" data-id="4">
-            <span class="timer"></span>
-            <span class="row-number">4</span>
-            <input type="text" class="text-input" placeholder="Nhập văn bản...">
-            <button class="button paste-btn" onclick="pasteText(4)">Dán</button>
-            <button class="button copy-btn" onclick="copyText(4)">Copy</button>
-            <button class="button delete-btn" onclick="deleteText(4)">Delete</button>
-            <span class="paste-count">Dán: 0 lần</span>
-            <span class="copy-count">Copy: 0 lần</span>
-            <button class="copy-adjust-btn" onclick="adjustCopyCount(4, 1)">+</button>
-            <button class="copy-adjust-btn" onclick="adjustCopyCount(4, -1)">−</button>
-            <textarea class="note-input" placeholder="Ghi chú..."></textarea>
-        </div>
-        <div class="row" data-id="5">
-            <span class="timer"></span>
-            <span class="row-number">5</span>
-            <input type="text" class="text-input" placeholder="Nhập văn bản...">
-            <button class="button paste-btn" onclick="pasteText(5)">Dán</button>
-            <button class="button copy-btn" onclick="copyText(5)">Copy</button>
-            <button class="button delete-btn" onclick="deleteText(5)">Delete</button>
-            <span class="paste-count">Dán: 0 lần</span>
-            <span class="copy-count">Copy: 0 lần</span>
-            <button class="copy-adjust-btn" onclick="adjustCopyCount(5, 1)">+</button>
-            <button class="copy-adjust-btn" onclick="adjustCopyCount(5, -1)">−</button>
-            <textarea class="note-input" placeholder="Ghi chú..."></textarea>
-        </div>
-        <div class="row" data-id="6">
-            <span class="timer"></span>
-            <span class="row-number">6</span>
-            <input type="text" class="text-input" placeholder="Nhập văn bản...">
-            <button class="button paste-btn" onclick="pasteText(6)">Dán</button>
-            <button class="button copy-btn" onclick="copyText(6)">Copy</button>
-            <button class="button delete-btn" onclick="deleteText(6)">Delete</button>
-            <span class="paste-count">Dán: 0 lần</span>
-            <span class="copy-count">Copy: 0 lần</span>
-            <button class="copy-adjust-btn" onclick="adjustCopyCount(6, 1)">+</button>
-            <button class="copy-adjust-btn" onclick="adjustCopyCount(6, -1)">−</button>
-            <textarea class="note-input" placeholder="Ghi chú..."></textarea>
-        </div>
-        <div class="row" data-id="7">
-            <span class="timer"></span>
-            <span class="row-number">7</span>
-            <input type="text" class="text-input" placeholder="Nhập văn bản...">
-            <button class="button paste-btn" onclick="pasteText(7)">Dán</button>
-            <button class="button copy-btn" onclick="copyText(7)">Copy</button>
-            <button class="button delete-btn" onclick="deleteText(7)">Delete</button>
-            <span class="paste-count">Dán: 0 lần</span>
-            <span class="copy-count">Copy: 0 lần</span>
-            <button class="copy-adjust-btn" onclick="adjustCopyCount(7, 1)">+</button>
-            <button class="copy-adjust-btn" onclick="adjustCopyCount(7, -1)">−</button>
-            <textarea class="note-input" placeholder="Ghi chú..."></textarea>
-        </div>
-    </div>
+    <div id="rows"></div>
+    <button class="add-row-btn" onclick="addRow()">Thêm hàng</button>
     <div class="total-paste">Tổng số lần dán: 0</div>
     <div class="total-links">
         Tổng số link duy nhất: 0
@@ -375,10 +267,11 @@
     <div class="congratulations" id="congratulations">Chúc mừng! Bạn đã đạt 10 lần dán!</div>
 
     <script>
-        let pasteCounts = Array(8).fill(0); // Mảng lưu số lần dán cho 7 hàng (1-7)
-        let copyCounts = Array(8).fill(0); // Mảng lưu số lần copy cho 7 hàng (1-7)
-        let timers = Array(8).fill(null); // Mảng lưu trạng thái đồng hồ: { timeLeft, intervalId, waitingForFocus }
+        let pasteCounts = []; // Mảng lưu số lần dán cho các hàng
+        let copyCounts = []; // Mảng lưu số lần copy cho các hàng
+        let timers = []; // Mảng lưu trạng thái đồng hồ: { timeLeft, intervalId, waitingForFocus }
         let uniqueLinks = []; // Mảng lưu { url, timestamp }
+        let rowData = []; // Mảng lưu dữ liệu hàng: { text, note }
 
         function updateTotalPaste() {
             const total = pasteCounts.reduce((sum, count) => sum + count, 0);
@@ -458,7 +351,7 @@
         function updateCopyDisplay(rowId) {
             const row = document.querySelector(`.row[data-id="${rowId}"]`);
             const copyCountElement = row.querySelector('.copy-count');
-            copyCountElement.textContent = `Copy: ${copyCounts[rowId]} lần`;
+            copyCountElement.textContent = `Copy: ${copyCounts[rowId] || 0} lần`;
             if (copyCounts[rowId] >= 5) {
                 copyCountElement.classList.add('highlight');
                 console.log(`Hàng ${rowId}: Đã thêm lớp highlight`); // Gỡ lỗi
@@ -466,7 +359,7 @@
                 copyCountElement.classList.remove('highlight');
                 console.log(`Hàng ${rowId}: Đã xóa lớp highlight`); // Gỡ lỗi
             }
-            console.log(`Hàng ${rowId}: Số lần copy = ${copyCounts[rowId]}`); // Gỡ lỗi
+            console.log(`Hàng ${rowId}: Số lần copy = ${copyCounts[rowId] || 0}`); // Gỡ lỗi
         }
 
         function updateTimerDisplay(rowId) {
@@ -514,9 +407,72 @@
             console.log(`Hàng ${rowId}: Bắt đầu đếm ngược`); // Gỡ lỗi
         }
 
+        function renderRows() {
+            const rowsContainer = document.getElementById('rows');
+            rowsContainer.innerHTML = '';
+            
+            rowData.forEach((data, index) => {
+                const rowId = index + 1;
+                const row = document.createElement('div');
+                row.className = 'row';
+                row.setAttribute('data-id', rowId);
+                row.innerHTML = `
+                    <span class="timer"></span>
+                    <span class="row-number">${rowId}</span>
+                    <input type="text" class="text-input" placeholder="Nhập văn bản..." value="${data.text || ''}">
+                    <button class="button paste-btn" onclick="pasteText(${rowId})">Dán</button>
+                    <button class="button copy-btn" onclick="copyText(${rowId})">Copy</button>
+                    <button class="button delete-btn" onclick="deleteText(${rowId})">Delete</button>
+                    <span class="paste-count">Dán: ${pasteCounts[rowId] || 0} lần</span>
+                    <span class="copy-count">Copy: ${copyCounts[rowId] || 0} lần</span>
+                    <button class="copy-adjust-btn" onclick="adjustCopyCount(${rowId}, 1)">+</button>
+                    <button class="copy-adjust-btn" onclick="adjustCopyCount(${rowId}, -1)">−</button>
+                    <textarea class="note-input" placeholder="Ghi chú...">${data.note || ''}</textarea>
+                    <button class="button remove-row-btn" onclick="removeRow(${rowId})">Xóa</button>
+                `;
+                rowsContainer.appendChild(row);
+                updateCopyDisplay(rowId);
+                updateTimerDisplay(rowId);
+            });
+
+            // Gắn lại sự kiện input cho ô ghi chú
+            document.querySelectorAll('.note-input').forEach(textarea => {
+                textarea.addEventListener('input', () => {
+                    const row = textarea.closest('.row');
+                    const rowId = parseInt(row.getAttribute('data-id'));
+                    rowData[rowId - 1].note = textarea.value;
+                    saveData();
+                });
+            });
+        }
+
+        function addRow() {
+            rowData.push({ text: '', note: '' });
+            pasteCounts.push(0);
+            copyCounts.push(0);
+            timers.push(null);
+            renderRows();
+            saveData();
+            console.log('Đã thêm hàng mới'); // Gỡ lỗi
+        }
+
+        function removeRow(rowId) {
+            if (rowData.length <= 1) {
+                alert('Phải có ít nhất 1 hàng!');
+                return;
+            }
+            rowData.splice(rowId - 1, 1);
+            pasteCounts.splice(rowId, 1);
+            copyCounts.splice(rowId, 1);
+            timers.splice(rowId, 1);
+            renderRows();
+            saveData();
+            console.log(`Đã xóa hàng ${rowId}`); // Gỡ lỗi
+        }
+
         function saveData() {
-            const textInputs = Array.from(document.querySelectorAll('.text-input')).map(input => input.value);
-            const noteInputs = Array.from(document.querySelectorAll('.note-input')).map(textarea => textarea.value);
+            const textInputs = rowData.map(data => data.text);
+            const noteInputs = rowData.map(data => data.note);
             const savedTimers = timers.map(timer => timer ? { timeLeft: timer.timeLeft, waitingForFocus: timer.waitingForFocus } : null);
             const data = {
                 textInputs,
@@ -550,50 +506,32 @@
         function loadData() {
             clearDataIfNewDay();
             const savedData = localStorage.getItem('textManagerData');
-            if (!savedData) return;
+            if (!savedData) {
+                // Khởi tạo 6 hàng mặc định
+                rowData = Array(6).fill().map(() => ({ text: '', note: '' }));
+                pasteCounts = Array(6).fill(0);
+                copyCounts = Array(6).fill(0);
+                timers = Array(6).fill(null);
+                renderRows();
+                return;
+            }
 
             const { textInputs, noteInputs, pasteCounts: savedPasteCounts, copyCounts: savedCopyCounts, timers: savedTimers, uniqueLinks: savedLinks } = JSON.parse(savedData);
             
-            // Khôi phục dữ liệu cho các hàng
-            document.querySelectorAll('.row').forEach((row, index) => {
-                const rowId = index + 1;
-                const textInput = row.querySelector('.text-input');
-                const noteInput = row.querySelector('.note-input');
-                const pasteCountElement = row.querySelector('.paste-count');
-                const copyCountElement = row.querySelector('.copy-count');
-
-                textInput.value = textInputs[index] || '';
-                noteInput.value = noteInputs[index] || '';
-                pasteCounts[rowId] = savedPasteCounts[rowId] || 0;
-                copyCounts[rowId] = savedCopyCounts[rowId] || 0;
-
-                pasteCountElement.textContent = `Dán: ${pasteCounts[rowId]} lần`;
-                copyCountElement.textContent = `Copy: ${copyCounts[rowId]} lần`;
-
-                if (copyCounts[rowId] >= 5) {
-                    copyCountElement.classList.add('highlight');
-                    console.log(`Hàng ${rowId}: Khôi phục lớp highlight`); // Gỡ lỗi
-                }
-
-                // Khôi phục đồng hồ
-                if (savedTimers[rowId]) {
-                    timers[rowId] = {
-                        timeLeft: savedTimers[rowId].timeLeft,
-                        waitingForFocus: savedTimers[rowId].waitingForFocus,
-                        intervalId: null
-                    };
-                    if (!timers[rowId].waitingForFocus && timers[rowId].timeLeft > 0) {
-                        startTimer(rowId);
-                    } else {
-                        updateTimerDisplay(rowId);
-                    }
-                }
-            });
-
+            // Khôi phục dữ liệu hàng
+            rowData = textInputs.map((text, i) => ({
+                text: text || '',
+                note: noteInputs[i] || ''
+            }));
+            pasteCounts = savedPasteCounts || [];
+            copyCounts = savedCopyCounts || [];
+            timers = savedTimers || [];
+            
             // Khôi phục danh sách link duy nhất
             uniqueLinks = savedLinks || [];
             updateTotalLinks();
 
+            renderRows();
             updateTotalPaste();
             console.log('Dữ liệu đã được khôi phục từ localStorage'); // Gỡ lỗi
         }
@@ -604,6 +542,7 @@
                 const row = document.querySelector(`.row[data-id="${rowId}"]`);
                 const input = row.querySelector('.text-input');
                 input.value = text;
+                rowData[rowId - 1].text = text;
                 pasteCounts[rowId]++;
                 
                 // Kiểm tra và thêm link vào uniqueLinks
@@ -671,7 +610,7 @@
         }
 
         function adjustCopyCount(rowId, change) {
-            copyCounts[rowId] = Math.max(0, copyCounts[rowId] + change); // Không cho số lần copy âm
+            copyCounts[rowId] = Math.max(0, (copyCounts[rowId] || 0) + change); // Không cho số lần copy âm
             updateCopyDisplay(rowId);
             saveData();
         }
@@ -681,7 +620,8 @@
             const input = row.querySelector('.text-input');
             const noteInput = row.querySelector('.note-input');
             input.value = '';
-            noteInput.value = ''; // Xóa cả ghi chú
+            noteInput.value = '';
+            rowData[rowId - 1] = { text: '', note: '' };
             pasteCounts[rowId] = 0;
             copyCounts[rowId] = 0;
             row.querySelector('.paste-count').textContent = `Dán: 0 lần`;
@@ -696,13 +636,6 @@
         document.querySelector('.show-links-btn').addEventListener('click', showLinksModal);
         document.querySelector('.close-modal-btn').addEventListener('click', closeLinksModal);
         document.querySelector('.delete-all-links-btn').addEventListener('click', deleteAllLinks);
-
-        // Thêm sự kiện input cho ô ghi chú
-        document.querySelectorAll('.note-input').forEach(textarea => {
-            textarea.addEventListener('input', () => {
-                saveData();
-            });
-        });
 
         // Phát hiện khi tab được focus để bắt đầu đếm ngược
         document.addEventListener('visibilitychange', () => {
