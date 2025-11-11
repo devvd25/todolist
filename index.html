@@ -717,53 +717,114 @@
         return btn;
       }
 
-      // Hàm gửi đến backend qua ngrok
+      // Hàm gửi đến backend qua ngrok (SỬA: KHÔNG alert(), đổi UI nút và log chi tiết)
       async function sendToNgrok(rowId){
         try{
           const row = document.querySelector(`.row[data-id="${rowId}"]`);
-          if(!row) return alert('Không tìm thấy hàng để gửi');
+          if(!row){
+            console.warn('Không tìm thấy hàng để gửi', rowId);
+            return;
+          }
+
           const input = row.querySelector('.text-input');
           const agentSel = row.querySelector('.agent-select');
+          const sendBtn = row.querySelector('.send-btn');
           const link = (input && input.value) ? input.value.trim() : '';
           const agent = agentSel ? agentSel.value : '1';
 
           if(!link){
-            alert('Chưa có link để gửi');
+            // hiển thị nhãn ngắn thay vì alert
+            showTemporarySentLabel(rowId, 'Chưa có link');
             return;
           }
 
-          // Chuẩn bị payload (định dạng JSON)
+          // UI: disable nút và hiển thị trạng thái gửi
+          if(sendBtn){
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'Đang gửi…';
+            sendBtn.style.opacity = '0.95';
+          }
+
+          // Tạo payload với nhiều alias trường để tăng khả năng backend nhận đúng param
           const payload = {
-            token: SECRET_TOKEN,
+            // token aliases
+            token: typeof SECRET_TOKEN !== 'undefined' ? SECRET_TOKEN : null,
+            auth: typeof SECRET_TOKEN !== 'undefined' ? SECRET_TOKEN : null,
+            key: typeof SECRET_TOKEN !== 'undefined' ? SECRET_TOKEN : null,
+
+            // agent aliases
             agent: agent,
-            link: link
+            agent_id: agent,
+            targetAgent: agent,
+            target: agent,
+            target_agent: agent,
+
+            // link/url aliases
+            link: link,
+            url: link,
+            href: link,
+            target_url: link,
+            source_url: link,
+
+            // metadata (harmless extras)
+            origin: window.location.origin,
+            page: window.location.pathname,
+            timestamp: new Date().toISOString()
           };
 
-          // Gửi request POST
+          // Gửi request
           const resp = await fetch(NGROK_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           });
 
-          if(!resp.ok){
-            const text = await resp.text().catch(()=>null);
-            console.error('Gửi thất bại', resp.status, text);
-            alert('Gửi thất bại: ' + resp.status + (text ? (' - ' + text) : ''));
-            return;
+          // Đọc response text để debug (server có thể trả text hoặc json)
+          const respText = await resp.text().catch(()=>null);
+          let respJson = null;
+          try{ respJson = respText ? JSON.parse(respText) : null; }catch(e){ respJson = null; }
+
+          if(resp.ok){
+            console.log('Gửi thành công', resp.status, respJson || respText);
+            if(sendBtn){
+              sendBtn.textContent = '✅ Đã gửi';
+              sendBtn.style.backgroundColor = '#28a745';
+            }
+            showTemporarySentLabel(rowId, `Đã gửi → Agent ${agent}`);
+          } else {
+            console.error('Gửi thất bại', resp.status, respText || respJson);
+            if(sendBtn){
+              sendBtn.disabled = false;
+              sendBtn.textContent = 'Gửi lại';
+              sendBtn.style.backgroundColor = '#e55353';
+            }
+            showTemporarySentLabel(rowId, `Gửi lỗi: ${resp.status}`);
           }
 
-          // Nếu backend trả JSON, try parse
-          let js;
-          try{ js = await resp.json(); }catch(e){ js = null; }
-          console.log('Gửi thành công, response=', js || '(no-json)');
+          // tự reset nút nếu đang là "Đã gửi"
+          setTimeout(()=>{
+            const r = document.querySelector(`.row[data-id="${rowId}"]`);
+            const b = r ? r.querySelector('.send-btn') : null;
+            if(b && b.textContent && b.textContent.includes('Đã gửi')){
+              b.disabled = false;
+              b.textContent = 'Gửi';
+              b.style.backgroundColor = '';
+              b.style.opacity = '';
+            }
+          }, 2500);
 
-          // Thông báo ngắn cho user
-          // thay vì alert to, dùng update nhỏ: thêm text 'Đã gửi' tạm thời bên phải nút
-          showTemporarySentLabel(rowId, `Đã gửi tới Agent ${agent}`);
         }catch(err){
           console.error('Lỗi khi gửi đến ngrok:', err);
-          alert('Lỗi khi gửi: ' + err.message);
+          const row = document.querySelector(`.row[data-id="${rowId}"]`);
+          const btn = row ? row.querySelector('.send-btn') : null;
+          if(btn){
+            btn.disabled = false;
+            btn.textContent = 'Gửi lại';
+            btn.style.backgroundColor = '#e55353';
+            btn.style.opacity = '';
+          }
+          showTemporarySentLabel(rowId, 'Gửi lỗi (xem console)');
+          // không alert để không chặn flow
         }
       }
 
