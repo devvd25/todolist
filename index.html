@@ -717,8 +717,8 @@
         return btn;
       }
 
-      // Hàm gửi đến backend qua ngrok
-      async function sendToNgrok(rowId){
+// Hàm gửi đến backend qua ngrok (đã sửa đúng payload)
+async function sendToNgrok(rowId){
     try {
         const row = document.querySelector(`.row[data-id="${rowId}"]`);
         if (!row) return;
@@ -743,7 +743,7 @@
         const payload = {
             token: SECRET_TOKEN,
             agent: agent,
-            text: link
+            text: link     // ✅ sửa đúng field backend yêu cầu
         };
 
         const resp = await fetch(NGROK_URL, {
