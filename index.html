@@ -770,33 +770,35 @@
       // Hiển thị trạng thái "Done" tạm thời trên nút Gửi (thay cho label popup)
 // Thao tác nhẹ: đổi text của nút .send-btn thành "Done" trong 1.5s rồi trả lại.
 // Và nếu có nhãn .sent-label còn sót sẽ bị xóa.
+// Hiển thị trạng thái "Done" tạm thời trên nút Gửi (đổi sang màu cam rồi trả lại)
 function showTemporarySentLabel(rowId, text){
   const row = document.querySelector(`.row[data-id="${rowId}"]`);
   if(!row) return;
 
-  // Xóa label xanh cũ nếu có (chỉ để dọn dẹp)
+  // Nếu còn label xanh cũ thì xóa
   const oldLbl = row.querySelector('.sent-label');
   if(oldLbl) oldLbl.remove();
 
-  // Tìm nút Gửi trong hàng
+  // Tìm nút Gửi
   const btn = row.querySelector('.send-btn');
-  if(!btn){
-    // fallback: tạo 1 tiny visual (không bắt buộc)
-    console.warn('Không tìm thấy nút gửi để đổi text (row ' + rowId + ')');
-    return;
-  }
+  if(!btn) return;
 
-  // Lưu trạng thái cũ, set thành Done, disable tạm thời
   const originalText = btn.textContent;
+  const originalBg = btn.style.backgroundColor;
+  const originalColor = btn.style.color;
+
+  // đổi text + đổi màu nút
   btn.textContent = 'Done';
   btn.disabled = true;
-  btn.style.opacity = '0.9';
+  btn.style.backgroundColor = '#ff9800';   // CAM (giống cảnh báo nhẹ nhàng)
+  btn.style.color = '#ffffff';
 
-  // sau 1.5s trả lại
+  // hoàn nguyên sau 1.5s
   setTimeout(() => {
     btn.textContent = originalText;
     btn.disabled = false;
-    btn.style.opacity = '';
+    btn.style.backgroundColor = originalBg;
+    btn.style.color = originalColor;
   }, 1500);
 }
 
