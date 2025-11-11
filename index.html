@@ -721,21 +721,12 @@
 async function sendToNgrok(rowId){
     try {
         const row = document.querySelector(`.row[data-id="${rowId}"]`);
-        if (!row) return;
-
         const input = row.querySelector('.text-input');
         const agentSel = row.querySelector('.agent-select');
         const sendBtn = row.querySelector('.send-btn');
 
-        const link = (input && input.value) ? input.value.trim() : '';
-        const agent = agentSel ? agentSel.value : '1';
-
-        if (!link) {
-            sendBtn.textContent = "Done";
-            sendBtn.style.backgroundColor = "#28a745";
-            setTimeout(() => resetSendButton(sendBtn), 1500);
-            return;
-        }
+        const link = input?.value?.trim();
+        const agent = agentSel?.value ?? "1";
 
         sendBtn.disabled = true;
         sendBtn.textContent = "Đang gửi…";
@@ -743,28 +734,24 @@ async function sendToNgrok(rowId){
         const payload = {
             token: SECRET_TOKEN,
             agent: agent,
-            text: link     // ✅ sửa đúng field backend yêu cầu
+            message: link     // ✅ đúng param backend cần
         };
 
         const resp = await fetch(NGROK_URL, {
             method: "POST",
+            mode: "cors",                         // ✅ quan trọng để chạy từ GitHub.io
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
 
         sendBtn.textContent = "Done";
         sendBtn.style.backgroundColor = "#28a745";
-
         setTimeout(() => resetSendButton(sendBtn), 2000);
 
-    } catch (err) {
-        console.error("Gửi lỗi:", err);
-        const btn = document.querySelector(`.row[data-id="${rowId}"] .send-btn`);
-        btn.disabled = false;
-        btn.textContent = "Gửi lại";
-        btn.style.backgroundColor = "#dc3545";
-
-        setTimeout(() => resetSendButton(btn), 2500);
+    } catch(err){
+        sendBtn.textContent = "Gửi lại";
+        sendBtn.style.backgroundColor = "#dc3545";
+        setTimeout(() => resetSendButton(sendBtn), 2000);
     }
 }
 
@@ -773,6 +760,7 @@ function resetSendButton(button){
     button.textContent = "Gửi";
     button.style.backgroundColor = "#17a2b8";
 }
+
 
 
       // Hiển thị nhãn nhỏ "Đã gửi" bên phải (tự ẩn sau 1.5s)
