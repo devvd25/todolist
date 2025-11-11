@@ -765,28 +765,6 @@ function resetSendButton(button){
 
 
 
-      // Hiển thị nhãn nhỏ "Đã gửi" bên phải (tự ẩn sau 1.5s)
-      function showTemporarySentLabel(rowId, text){
-        const row = document.querySelector(`.row[data-id="${rowId}"]`);
-        if(!row) return;
-        let lbl = row.querySelector('.sent-label');
-        if(!lbl){
-          lbl = document.createElement('span');
-          lbl.className = 'sent-label';
-          lbl.style.marginLeft = '8px';
-          lbl.style.padding = '6px 8px';
-          lbl.style.borderRadius = '6px';
-          lbl.style.background = '#28a745';
-          lbl.style.color = '#fff';
-          lbl.style.fontSize = '13px';
-          lbl.style.fontWeight = '600';
-          row.appendChild(lbl);
-        }
-        lbl.textContent = text || 'Đã gửi';
-        lbl.style.opacity = '1';
-        setTimeout(()=>{ if(lbl) lbl.style.opacity = '0'; }, 1500);
-      }
-
       // Chèn nút Gửi và ô chọn Agent cho mỗi hàng
       function enhanceRows(){
         const rows = document.querySelectorAll('.row');
