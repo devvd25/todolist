@@ -672,5 +672,197 @@
         // Tải dữ liệu khi trang được mở
         window.addEventListener('load', loadData);
     </script>
+
+    <!-- ============================
+         PHẦN THÊM: API integration + nút Gửi + chọn Agent
+         Lưu ý: MÌNH CHỈ THÊM MÃ Ở DƯỚI (không sửa gì code cũ)
+         ============================ -->
+    <script>
+    (function(){
+      // Cấu hình ngrok / token (chỉnh theo môi trường của bạn)
+      const NGROK_URL = 'https://844aace9e015.ngrok-free.app/push'; // thay nếu khác
+      const SECRET_TOKEN = 'MY_SECRET_TOKEN_ChangeMe'; // đặt token bảo mật của bạn
+
+      // Tạo element <select> Agent với các option Agent 1..18
+      function createAgentSelect(selectedValue){
+        const sel = document.createElement('select');
+        sel.className = 'agent-select';
+        sel.style.marginLeft = '8px';
+        sel.style.padding = '6px';
+        sel.style.borderRadius = '4px';
+        sel.style.border = '1px solid #ddd';
+        sel.style.background = '#fff';
+        sel.style.fontSize = '13px';
+        for(let i=1;i<=18;i++){
+          const o = document.createElement('option');
+          o.value = String(i);
+          o.textContent = 'Agent ' + i;
+          if(String(i) === String(selectedValue)) o.selected = true;
+          sel.appendChild(o);
+        }
+        return sel;
+      }
+
+      // Tạo nút Gửi
+      function createSendButton(rowId){
+        const btn = document.createElement('button');
+        btn.className = 'button send-btn';
+        btn.textContent = 'Gửi';
+        btn.style.backgroundColor = '#17a2b8';
+        btn.style.marginLeft = '6px';
+        btn.addEventListener('click', function(e){
+          e.preventDefault();
+          sendToNgrok(rowId);
+        });
+        return btn;
+      }
+
+      // Hàm gửi đến backend qua ngrok
+      async function sendToNgrok(rowId){
+        try{
+          const row = document.querySelector(`.row[data-id="${rowId}"]`);
+          if(!row) return alert('Không tìm thấy hàng để gửi');
+          const input = row.querySelector('.text-input');
+          const agentSel = row.querySelector('.agent-select');
+          const link = (input && input.value) ? input.value.trim() : '';
+          const agent = agentSel ? agentSel.value : '1';
+
+          if(!link){
+            alert('Chưa có link để gửi');
+            return;
+          }
+
+          // Chuẩn bị payload (định dạng JSON)
+          const payload = {
+            token: SECRET_TOKEN,
+            agent: agent,
+            link: link
+          };
+
+          // Gửi request POST
+          const resp = await fetch(NGROK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          if(!resp.ok){
+            const text = await resp.text().catch(()=>null);
+            console.error('Gửi thất bại', resp.status, text);
+            alert('Gửi thất bại: ' + resp.status + (text ? (' - ' + text) : ''));
+            return;
+          }
+
+          // Nếu backend trả JSON, try parse
+          let js;
+          try{ js = await resp.json(); }catch(e){ js = null; }
+          console.log('Gửi thành công, response=', js || '(no-json)');
+
+          // Thông báo ngắn cho user
+          // thay vì alert to, dùng update nhỏ: thêm text 'Đã gửi' tạm thời bên phải nút
+          showTemporarySentLabel(rowId, `Đã gửi tới Agent ${agent}`);
+        }catch(err){
+          console.error('Lỗi khi gửi đến ngrok:', err);
+          alert('Lỗi khi gửi: ' + err.message);
+        }
+      }
+
+      // Hiển thị nhãn nhỏ "Đã gửi" bên phải (tự ẩn sau 1.5s)
+      function showTemporarySentLabel(rowId, text){
+        const row = document.querySelector(`.row[data-id="${rowId}"]`);
+        if(!row) return;
+        let lbl = row.querySelector('.sent-label');
+        if(!lbl){
+          lbl = document.createElement('span');
+          lbl.className = 'sent-label';
+          lbl.style.marginLeft = '8px';
+          lbl.style.padding = '6px 8px';
+          lbl.style.borderRadius = '6px';
+          lbl.style.background = '#28a745';
+          lbl.style.color = '#fff';
+          lbl.style.fontSize = '13px';
+          lbl.style.fontWeight = '600';
+          row.appendChild(lbl);
+        }
+        lbl.textContent = text || 'Đã gửi';
+        lbl.style.opacity = '1';
+        setTimeout(()=>{ if(lbl) lbl.style.opacity = '0'; }, 1500);
+      }
+
+      // Chèn nút Gửi và ô chọn Agent cho mỗi hàng
+      function enhanceRows(){
+        const rows = document.querySelectorAll('.row');
+        rows.forEach(r => {
+          const id = parseInt(r.getAttribute('data-id'));
+          if(Number.isNaN(id)) return;
+
+          // Thêm nút Gửi nếu chưa có
+          if(!r.querySelector('.send-btn')){
+            // tìm nút paste để chèn sau nó
+            const pasteBtn = r.querySelector('.paste-btn');
+            if(pasteBtn){
+              const sendBtn = createSendButton(id);
+              pasteBtn.parentNode.insertBefore(sendBtn, pasteBtn.nextSibling);
+            } else {
+              // fallback: append vào sau input
+              const input = r.querySelector('.text-input');
+              if(input) input.parentNode.insertBefore(createSendButton(id), input.nextSibling);
+            }
+          }
+
+          // Thêm select agent nếu chưa có (chèn trước textarea.note-input)
+          if(!r.querySelector('.agent-select')){
+            const note = r.querySelector('.note-input');
+            const sel = createAgentSelect('1');
+            if(note){
+              note.parentNode.insertBefore(sel, note);
+            } else {
+              // fallback append to end
+              r.appendChild(sel);
+            }
+            // sync selection to rowData (add property agent)
+            sel.addEventListener('change', ()=> {
+              const ridx = id - 1;
+              if(!rowData[ridx]) rowData[ridx] = { text:'', note:'' };
+              rowData[ridx].agent = sel.value;
+              try{ saveData(); }catch(e){ /* ignore if not available */ }
+            });
+          }
+        });
+      }
+
+      // Use a MutationObserver to run enhanceRows() whenever #rows children change
+      const target = document.getElementById('rows');
+      if(target){
+        const mo = new MutationObserver(() => {
+          try{ enhanceRows(); }catch(e){ console.error(e); }
+        });
+        mo.observe(target, { childList: true, subtree: true });
+      }
+
+      // Also call enhanceRows periodically (safety)
+      window.addEventListener('load', ()=> {
+        try{ enhanceRows(); }catch(e){console.error(e);}
+        // attempt a few times in case original loadData renders later
+        setTimeout(enhanceRows, 300);
+        setTimeout(enhanceRows, 800);
+      });
+
+      // If addRow is defined, wrap it so after adding row we also enhance
+      if(window.addRow && typeof window.addRow === 'function'){
+        const originalAddRow = window.addRow;
+        window.addRow = function(...args){
+          const res = originalAddRow.apply(this, args);
+          setTimeout(enhanceRows, 50);
+          return res;
+        };
+      }
+
+      // Expose a function for debugging
+      window.__sendToNgrok = sendToNgrok;
+    })();
+    </script>
+    <!-- ============================ END ADDED BLOCK ============================ -->
+
 </body>
 </html>
