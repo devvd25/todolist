@@ -591,15 +591,14 @@ if (Array.isArray(JSON.parse(savedData).agentInputs)) {
         row.querySelector('.paste-count').textContent = `Dán: ${pasteCounts[rowId - 1]} lần`;
         updateCopyDisplay(rowId); // vẫn cập nhật giao diện copy badge nếu cần
 
-        // Reset đồng hồ 3 phút cho hàng này (giống như khi dán/copy)
+        // Thiết lập đồng hồ đếm ngược
         resetTimer(rowId);
         timers[rowId - 1] = {
-          timeLeft: 180,      // 3 phút
-          intervalId: null,
-          waitingForFocus: true
+            timeLeft: 180, // 3 phút
+            intervalId: null,
+            waitingForFocus: true
         };
         updateTimerDisplay(rowId);
-
         
         console.log(`Hàng ${rowId}: Số lần dán = ${pasteCounts[rowId - 1]}`); // Gỡ lỗi
         saveData();
