@@ -717,7 +717,6 @@
         return btn;
       }
 
-// Hàm gửi đến backend qua ngrok (đã sửa đúng payload)
 async function sendToNgrok(rowId){
     try {
         const row = document.querySelector(`.row[data-id="${rowId}"]`);
@@ -734,12 +733,14 @@ async function sendToNgrok(rowId){
         const payload = {
             token: SECRET_TOKEN,
             agent: agent,
-            message: link     // ✅ đúng param backend cần
+            message: link   // ✅ ĐÚNG: backend yêu cầu field "message"
         };
+
+        console.log("📦 Payload gửi lên backend:", payload);   // ✅ đặt ở đây
 
         const resp = await fetch(NGROK_URL, {
             method: "POST",
-            mode: "cors",                         // ✅ quan trọng để chạy từ GitHub.io
+            mode: "cors",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
@@ -749,6 +750,7 @@ async function sendToNgrok(rowId){
         setTimeout(() => resetSendButton(sendBtn), 2000);
 
     } catch(err){
+        console.log("❌ Lỗi gửi:", err);
         sendBtn.textContent = "Gửi lại";
         sendBtn.style.backgroundColor = "#dc3545";
         setTimeout(() => resetSendButton(sendBtn), 2000);
