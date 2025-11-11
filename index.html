@@ -680,7 +680,7 @@
     <script>
     (function(){
       // Cấu hình ngrok / token (chỉnh theo môi trường của bạn)
-      const NGROK_URL = 'https://db392de52e0e.ngrok-free.app/push'; // thay nếu khác
+      const NGROK_URL = 'https://844aace9e015.ngrok-free.app/push'; // thay nếu khác
       const SECRET_TOKEN = 'MY_SECRET_TOKEN_ChangeMe'; // đặt token bảo mật của bạn
 
       // Tạo element <select> Agent với các option Agent 1..18
@@ -717,7 +717,87 @@
         return btn;
       }
 
-// Chèn nút Gửi và ô chọn Agent cho mỗi hàng
+      // Hàm gửi đến backend qua ngrok
+      async function sendToNgrok(rowId){
+    try {
+        const row = document.querySelector(`.row[data-id="${rowId}"]`);
+        if (!row) return;
+
+        const input = row.querySelector('.text-input');
+        const agentSel = row.querySelector('.agent-select');
+        const sendBtn = row.querySelector('.send-btn');
+
+        const link = (input && input.value) ? input.value.trim() : '';
+        const agent = agentSel ? agentSel.value : '1';
+
+        if (!link) {
+            sendBtn.textContent = "Done";
+            sendBtn.style.backgroundColor = "#28a745";
+            setTimeout(() => resetSendButton(sendBtn), 1500);
+            return;
+        }
+
+        sendBtn.disabled = true;
+        sendBtn.textContent = "Đang gửi…";
+
+        const payload = {
+            token: SECRET_TOKEN,
+            agent: agent,
+            link: link
+        };
+
+        const resp = await fetch(NGROK_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        sendBtn.textContent = "Done";
+        sendBtn.style.backgroundColor = "#28a745";
+
+        setTimeout(() => resetSendButton(sendBtn), 2000);
+
+    } catch (err) {
+        console.error("Gửi lỗi:", err);
+        const btn = document.querySelector(`.row[data-id="${rowId}"] .send-btn`);
+        btn.disabled = false;
+        btn.textContent = "Gửi lại";
+        btn.style.backgroundColor = "#dc3545";
+
+        setTimeout(() => resetSendButton(btn), 2500);
+    }
+}
+
+function resetSendButton(button){
+    button.disabled = false;
+    button.textContent = "Gửi";
+    button.style.backgroundColor = "#17a2b8";
+}
+
+
+      // Hiển thị nhãn nhỏ "Đã gửi" bên phải (tự ẩn sau 1.5s)
+      function showTemporarySentLabel(rowId, text){
+        const row = document.querySelector(`.row[data-id="${rowId}"]`);
+        if(!row) return;
+        let lbl = row.querySelector('.sent-label');
+        if(!lbl){
+          lbl = document.createElement('span');
+          lbl.className = 'sent-label';
+          lbl.style.marginLeft = '8px';
+          lbl.style.padding = '6px 8px';
+          lbl.style.borderRadius = '6px';
+          lbl.style.background = '#28a745';
+          lbl.style.color = '#fff';
+          lbl.style.fontSize = '13px';
+          lbl.style.fontWeight = '600';
+          row.appendChild(lbl);
+        }
+        lbl.textContent = text || 'Đã gửi';
+        lbl.style.opacity = '1';
+        setTimeout(()=>{ if(lbl) lbl.style.opacity = '0'; }, 1500);
+      }
+
+      // Chèn nút Gửi và ô chọn Agent cho mỗi hàng
       function enhanceRows(){
         const rows = document.querySelectorAll('.row');
         rows.forEach(r => {
