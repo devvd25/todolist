@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý Text</title>
+    <title> Quản lý Text 2 </title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -252,7 +252,7 @@
     </style>
 </head>
 <body>
-    <h1>Quản lý Text</h1>
+    <h1> Quản lý Text 2 </h1>
     <div id="rows"></div>
     <button class="add-row-btn" onclick="addRow()">Thêm hàng</button>
     <div class="total-paste">Tổng số lần dán: 0</div>
@@ -693,7 +693,7 @@
         sel.style.border = '1px solid #ddd';
         sel.style.background = '#fff';
         sel.style.fontSize = '13px';
-        for(let i=1;i<=18;i++){
+        for(let i=10;i<=18;i++){
           const o = document.createElement('option');
           o.value = String(i);
           o.textContent = 'Agent ' + i;
@@ -719,110 +719,18 @@
 
       // Hàm gửi đến backend qua ngrok
       async function sendToNgrok(rowId){
-  try{
-    const row = document.querySelector(`.row[data-id="${rowId}"]`);
-    if(!row) return console.warn('Không tìm thấy hàng để gửi', rowId);
+        try{
+          const row = document.querySelector(`.row[data-id="${rowId}"]`);
+          if(!row) return alert('Không tìm thấy hàng để gửi');
+          const input = row.querySelector('.text-input');
+          const agentSel = row.querySelector('.agent-select');
+          const link = (input && input.value) ? input.value.trim() : '';
+          const agent = agentSel ? agentSel.value : '1';
 
-    const input = row.querySelector('.text-input');
-    const agentSel = row.querySelector('.agent-select');
-    const btn = row.querySelector('.send-btn');
-    const link = (input && input.value) ? input.value.trim() : '';
-    const agent = agentSel ? agentSel.value : '1';
-
-    if(!link){
-      showTemporarySentLabel(rowId, 'Chưa có link');
-      return;
-    }
-
-    // UI: đặt trạng thái nút
-    if(btn){
-      btn.disabled = true;
-      btn.textContent = 'Đang gửi…';
-      btn.style.opacity = '0.95';
-    }
-
-    // Tạo payload chứa nhiều alias trường (tăng khả năng backend nhận được param đúng)
-    const payload = {
-      // token aliases
-      token: typeof SECRET_TOKEN !== 'undefined' ? SECRET_TOKEN : null,
-      auth: typeof SECRET_TOKEN !== 'undefined' ? SECRET_TOKEN : null,
-      key: typeof SECRET_TOKEN !== 'undefined' ? SECRET_TOKEN : null,
-
-      // agent aliases
-      agent: agent,
-      agent_id: agent,
-      targetAgent: agent,
-      target: agent,
-      target_agent: agent,
-
-      // link/url aliases
-      link: link,
-      url: link,
-      href: link,
-      target_url: link,
-      source_url: link,
-
-      // metadata (harmless extras)
-      origin: window.location.origin,
-      page: window.location.pathname,
-      timestamp: new Date().toISOString()
-    };
-
-    // Gửi request
-    const resp = await fetch(typeof NGROK_URL !== 'undefined' ? NGROK_URL : '/push', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    // Đọc response text để debug (nhiều server trả text)
-    const respText = await resp.text().catch(()=>null);
-    let respJson = null;
-    try{ respJson = respText ? JSON.parse(respText) : null; }catch(e){ respJson = null; }
-
-    if(resp.ok){
-      console.log('Gửi thành công', resp.status, respJson || respText);
-      if(btn){
-        btn.textContent = '✅ Đã gửi';
-        btn.style.backgroundColor = '#28a745';
-      }
-      showTemporarySentLabel(rowId, `Đã gửi → Agent ${agent}`);
-    } else {
-      console.error('Gửi thất bại', resp.status, respText || respJson);
-      if(btn){
-        btn.disabled = false;
-        btn.textContent = 'Gửi lại';
-        btn.style.backgroundColor = '#e55353';
-      }
-      // Hiển thị lỗi ngắn gọn, chi tiết nằm ở console
-      showTemporarySentLabel(rowId, `Gửi lỗi: ${resp.status}`);
-    }
-
-    // nếu muốn tự reset nút sau 2.5s
-    setTimeout(()=>{
-      const r = document.querySelector(`.row[data-id="${rowId}"]`);
-      const b = r ? r.querySelector('.send-btn') : null;
-      if(b && b.textContent && b.textContent.includes('Đã gửi')){
-        b.disabled = false;
-        b.textContent = 'Gửi';
-        b.style.backgroundColor = '';
-      }
-    }, 2500);
-
-  }catch(err){
-    console.error('Lỗi khi gửi đến ngrok:', err);
-    const row = document.querySelector(`.row[data-id="${rowId}"]`);
-    const btn = row ? row.querySelector('.send-btn') : null;
-    if(btn){
-      btn.disabled = false;
-      btn.textContent = 'Gửi lại';
-      btn.style.backgroundColor = '#e55353';
-    }
-    showTemporarySentLabel(rowId, 'Gửi lỗi (xem console)');
-    // KHÔNG alert — chỉ log
-  }
-}
-
+          if(!link){
+            alert('Chưa có link để gửi');
+            return;
+          }
 
           // Chuẩn bị payload (định dạng JSON)
           const payload = {
