@@ -719,53 +719,80 @@
 
       // Hàm gửi đến backend qua ngrok
       async function sendToNgrok(rowId){
-        try{
-          const row = document.querySelector(`.row[data-id="${rowId}"]`);
-          if(!row) return alert('Không tìm thấy hàng để gửi');
-          const input = row.querySelector('.text-input');
-          const agentSel = row.querySelector('.agent-select');
-          const link = (input && input.value) ? input.value.trim() : '';
-          const agent = agentSel ? agentSel.value : '1';
+  try{
+    const row = document.querySelector(`.row[data-id="${rowId}"]`);
+    if(!row) return console.warn('Không tìm thấy hàng để gửi', rowId);
+    const input = row.querySelector('.text-input');
+    const agentSel = row.querySelector('.agent-select');
+    const btn = row.querySelector('.send-btn'); // nút Gửi trong hàng
+    const link = (input && input.value) ? input.value.trim() : '';
+    const agent = agentSel ? agentSel.value : '1';
 
-          if(!link){
-            alert('Chưa có link để gửi');
-            return;
-          }
+    if(!link){
+      // hiển thị trạng thái nhẹ nhàng thay vì alert
+      showTemporarySentLabel(rowId, 'Chưa có link');
+      return;
+    }
 
-          // Chuẩn bị payload (định dạng JSON)
-          const payload = {
-            token: SECRET_TOKEN,
-            agent: agent,
-            link: link
-          };
+    // cập nhật nút: đang gửi
+    if(btn){
+      btn.disabled = true;
+      btn.textContent = 'Đang gửi…';
+      btn.style.opacity = '0.9';
+    }
 
-          // Gửi request POST
-          const resp = await fetch(NGROK_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
+    const payload = { token: SECRET_TOKEN, agent, link };
 
-          if(!resp.ok){
-            const text = await resp.text().catch(()=>null);
-            console.error('Gửi thất bại', resp.status, text);
-            alert('Gửi thất bại: ' + resp.status + (text ? (' - ' + text) : ''));
-            return;
-          }
+    // Gửi request (catch sẽ bắt lỗi mạng/CORS)
+    const resp = await fetch(NGROK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
 
-          // Nếu backend trả JSON, try parse
-          let js;
-          try{ js = await resp.json(); }catch(e){ js = null; }
-          console.log('Gửi thành công, response=', js || '(no-json)');
-
-          // Thông báo ngắn cho user
-          // thay vì alert to, dùng update nhỏ: thêm text 'Đã gửi' tạm thời bên phải nút
-          showTemporarySentLabel(rowId, `Đã gửi tới Agent ${agent}`);
-        }catch(err){
-          console.error('Lỗi khi gửi đến ngrok:', err);
-          alert('Lỗi khi gửi: ' + err.message);
-        }
+    if(resp.ok){
+      // thành công
+      if(btn){
+        btn.textContent = '✅ Đã gửi';
+        btn.style.backgroundColor = '#28a745';
       }
+      showTemporarySentLabel(rowId, `Đã gửi → Agent ${agent}`);
+    } else {
+      // lỗi HTTP (4xx/5xx)
+      const txt = await resp.text().catch(()=>null);
+      console.error('Gửi thất bại, status=', resp.status, txt);
+      if(btn){
+        btn.disabled = false;
+        btn.textContent = 'Gửi lại';
+        btn.style.backgroundColor = '#e55353';
+      }
+      showTemporarySentLabel(rowId, `Gửi lỗi: ${resp.status}`);
+    }
+  }catch(err){
+    // lỗi mạng / CORS / ngrok tắt
+    console.error('Lỗi khi gửi đến ngrok:', err);
+    const row = document.querySelector(`.row[data-id="${rowId}"]`);
+    const btn = row ? row.querySelector('.send-btn') : null;
+    if(btn){
+      btn.disabled = false;
+      btn.textContent = 'Gửi lại';
+      btn.style.backgroundColor = '#e55353';
+    }
+    showTemporarySentLabel(rowId, 'Gửi lỗi (xem console)');
+    // KHÔNG alert — chỉ log
+  } finally {
+    // tự reset nút về trạng thái Gửi sau 2.5s nếu nó đang "Đã gửi"
+    setTimeout(()=>{
+      const row = document.querySelector(`.row[data-id="${rowId}"]`);
+      const btn = row ? row.querySelector('.send-btn') : null;
+      if(btn && btn.textContent && btn.textContent.includes('Đã gửi')){
+        btn.disabled = false;
+        btn.textContent = 'Gửi';
+        btn.style.backgroundColor = ''; // trả về màu mặc định
+      }
+    }, 2500);
+  }
+}
 
       // Hiển thị nhãn nhỏ "Đã gửi" bên phải (tự ẩn sau 1.5s)
       function showTemporarySentLabel(rowId, text){
