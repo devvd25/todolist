@@ -580,7 +580,7 @@
                 // Cập nhật số lần copy khi dán
                 if (pasteCounts[rowId - 1] > 1) {
                     copyCounts[rowId - 1] = 0; // Reset số lần copy nếu không phải lần dán đầu
-                }
+                    } 
                 copyCounts[rowId - 1]++; // Tăng số lần copy lên 1
                 
                 row.querySelector('.paste-count').textContent = `Dán: ${pasteCounts[rowId - 1]} lần`;
@@ -717,37 +717,53 @@
         return btn;
       }
 
-async function sendToNgrok(link, selectedAgent, button) {
-  const ngrokUrl = document.getElementById("ngrokUrlInput").value.trim();
-  if (!ngrokUrl) return;
+async function sendToNgrok(rowId){
+    try {
+        const row = document.querySelector(`.row[data-id="${rowId}"]`);
+        const input = row.querySelector('.text-input');
+        const agentSel = row.querySelector('.agent-select');
+        const sendBtn = row.querySelector('.send-btn');
 
-  const payload = {
-    token: "MY_SECRET_TOKEN_ChangeMe",
-    targetAgent: selectedAgent,
-    link: link,
-  };
+        const link = input?.value?.trim();
+        const agent = agentSel?.value ?? "1";
 
-  try {
-    const res = await fetch(`${ngrokUrl}/push`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+        sendBtn.disabled = true;
+        sendBtn.textContent = "Đang gửi…";
 
-    console.log("Payload gửi lên backend:", payload);
+        const payload = {
+            token: SECRET_TOKEN,
+            targetAgent: agent,
+            link: link   // ✅ backend yêu cầu field "link" và "targetAgent"
+        };
 
-    if (res.ok) {
-      button.innerText = "Done";          // 🔥 Thay chữ Gửi thành Done
-      return;
+        console.log("📦 Payload gửi lên backend:", payload);   // ✅ đặt ở đây
+
+        const resp = await fetch(NGROK_URL, {
+            method: "POST",
+            mode: "cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        // nếu server trả ok thì đổi nút thành Done (không tạo label phụ)
+        if (resp.ok) {
+            sendBtn.textContent = "Done";
+            sendBtn.style.backgroundColor = "#28a745";
+        } else {
+            console.warn('Backend trả mã lỗi', resp.status);
+            sendBtn.textContent = "Gửi lại";
+            sendBtn.style.backgroundColor = "#dc3545";
+        }
+
+        setTimeout(() => resetSendButton(sendBtn), 2000);
+
+    } catch(err){
+        console.log("❌ Lỗi gửi:", err);
+        sendBtn.textContent = "Gửi lại";
+        sendBtn.style.backgroundColor = "#dc3545";
+        setTimeout(() => resetSendButton(sendBtn), 2000);
     }
-
-    console.warn("Backend trả về lỗi:", await res.text());
-
-  } catch (e) {
-    console.error("Fetch error:", e);
-  }
 }
-
 
 function resetSendButton(button){
     button.disabled = false;
