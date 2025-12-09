@@ -143,6 +143,88 @@
         .add-row-btn:hover {
             background-color: #218838;
         }
+        
+        /* Auto Clicker Control Panel */
+        .auto-clicker-panel {
+            margin-top: 20px;
+            padding: 15px;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
+        }
+        .auto-clicker-panel h3 {
+            margin: 0 0 10px 0;
+            color: #667eea;
+            font-size: 16px;
+        }
+        .auto-clicker-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #dc3545;
+        }
+        .status-dot.connected {
+            background: #28a745;
+            box-shadow: 0 0 8px #28a745;
+        }
+        .auto-clicker-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .auto-clicker-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .auto-clicker-btn:hover {
+            transform: translateY(-2px);
+        }
+        .auto-clicker-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-run-all {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            color: white;
+        }
+        .btn-run-all:hover:not(:disabled) {
+            box-shadow: 0 4px 15px rgba(56, 239, 125, 0.4);
+        }
+        .btn-stop {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+        }
+        .btn-check {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        .coords-count {
+            background: #667eea;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .delay-input-auto {
+            width: 80px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
         .links-modal {
             display: none;
             position: fixed;
@@ -259,6 +341,33 @@
     <div class="total-links">
         Tổng số link duy nhất: 0
         <button class="show-links-btn">Xem Links</button>
+    </div>
+    
+    <!-- Auto Clicker Control Panel -->
+    <div class="auto-clicker-panel">
+        <h3>🎯 Auto Clicker Desktop</h3>
+        <div class="auto-clicker-status">
+            <span class="status-dot" id="acStatusDot"></span>
+            <span id="acStatusText">Đang kiểm tra server...</span>
+            <span class="coords-count" id="acCoordsCount">0 tọa độ</span>
+        </div>
+        <div class="auto-clicker-buttons">
+            <button class="auto-clicker-btn btn-run-all" id="btnRunAutoClick" disabled>
+                ▶️ Chạy tất cả Auto Click
+            </button>
+            <button class="auto-clicker-btn btn-stop" id="btnStopRecord" disabled>
+                ⏹️ Dừng ghi
+            </button>
+            <button class="auto-clicker-btn btn-check" id="btnCheckServer">
+                🔄 Kiểm tra kết nối
+            </button>
+            <label style="display:flex;align-items:center;gap:5px;">
+                Delay: <input type="number" class="delay-input-auto" id="acDelayInput" value="500" min="100" step="100"> ms
+            </label>
+        </div>
+        <p style="font-size:12px;color:#666;margin-top:10px;">
+            💡 Lưu ý: Server Desktop Auto Clicker phải đang chạy (start.bat trong folder desktop-clicker)
+        </p>
     </div>
     <div class="links-modal-overlay"></div>
     <div class="links-modal">
@@ -934,6 +1043,148 @@ function showTemporarySentLabel(rowId, text){
     })();
     </script>
     <!-- ============================ END ADDED BLOCK ============================ -->
+
+    <!-- ============================
+         AUTO CLICKER DESKTOP INTEGRATION
+         ============================ -->
+    <script>
+    (function(){
+      const AC_API_URL = 'http://localhost:5000/api';
+      
+      // DOM Elements
+      const acStatusDot = document.getElementById('acStatusDot');
+      const acStatusText = document.getElementById('acStatusText');
+      const acCoordsCount = document.getElementById('acCoordsCount');
+      const btnRunAutoClick = document.getElementById('btnRunAutoClick');
+      const btnStopRecord = document.getElementById('btnStopRecord');
+      const btnCheckServer = document.getElementById('btnCheckServer');
+      const acDelayInput = document.getElementById('acDelayInput');
+      
+      let acConnected = false;
+      let acCoordinates = [];
+      
+      // API call helper
+      async function acApiCall(endpoint, method = 'GET', data = null) {
+        const options = {
+          method,
+          headers: { 'Content-Type': 'application/json' }
+        };
+        if (data) options.body = JSON.stringify(data);
+        const response = await fetch(`${AC_API_URL}${endpoint}`, options);
+        return await response.json();
+      }
+      
+      // Check server connection
+      async function checkAutoClickerServer() {
+        try {
+          const result = await acApiCall('/ping');
+          if (result.success) {
+            acConnected = true;
+            acStatusDot.classList.add('connected');
+            acStatusText.textContent = '✓ Server đang chạy';
+            btnRunAutoClick.disabled = false;
+            btnStopRecord.disabled = false;
+            
+            // Load coordinates
+            await loadAutoClickerCoords();
+            return true;
+          }
+        } catch (error) {
+          acConnected = false;
+          acStatusDot.classList.remove('connected');
+          acStatusText.textContent = '✗ Server chưa chạy';
+          btnRunAutoClick.disabled = true;
+          btnStopRecord.disabled = true;
+          acCoordsCount.textContent = '0 tọa độ';
+        }
+        return false;
+      }
+      
+      // Load coordinates from server
+      async function loadAutoClickerCoords() {
+        try {
+          const result = await acApiCall('/coordinates');
+          if (result.success) {
+            acCoordinates = result.coordinates;
+            acCoordsCount.textContent = `${acCoordinates.length} tọa độ`;
+          }
+        } catch (error) {
+          console.error('Error loading coordinates:', error);
+        }
+      }
+      
+      // Run all clicks
+      async function runAllAutoClicks() {
+        if (!acConnected) {
+          alert('Server Auto Clicker chưa chạy! Hãy chạy start.bat trong folder desktop-clicker');
+          return;
+        }
+        
+        if (acCoordinates.length === 0) {
+          alert('Chưa có tọa độ nào! Hãy mở extension để ghi tọa độ trước.');
+          return;
+        }
+        
+        const delay = parseInt(acDelayInput.value) || 500;
+        
+        try {
+          btnRunAutoClick.disabled = true;
+          btnRunAutoClick.textContent = '⏳ Đang chạy...';
+          
+          await acApiCall('/click/all', 'POST', { 
+            coordinates: acCoordinates, 
+            delay: delay 
+          });
+          
+          console.log(`Đã gửi lệnh chạy ${acCoordinates.length} click với delay ${delay}ms`);
+          
+          // Restore button after estimated time
+          const totalTime = acCoordinates.length * delay + 1000;
+          setTimeout(() => {
+            btnRunAutoClick.disabled = false;
+            btnRunAutoClick.textContent = '▶️ Chạy tất cả Auto Click';
+          }, totalTime);
+          
+        } catch (error) {
+          console.error('Error running clicks:', error);
+          alert('Lỗi khi chạy auto click: ' + error.message);
+          btnRunAutoClick.disabled = false;
+          btnRunAutoClick.textContent = '▶️ Chạy tất cả Auto Click';
+        }
+      }
+      
+      // Stop recording
+      async function stopRecording() {
+        try {
+          await acApiCall('/record/stop', 'POST');
+          console.log('Đã dừng ghi tọa độ');
+          await loadAutoClickerCoords();
+        } catch (error) {
+          console.error('Error stopping recording:', error);
+        }
+      }
+      
+      // Event listeners
+      btnRunAutoClick.addEventListener('click', runAllAutoClicks);
+      btnStopRecord.addEventListener('click', stopRecording);
+      btnCheckServer.addEventListener('click', checkAutoClickerServer);
+      
+      // Initial check
+      checkAutoClickerServer();
+      
+      // Auto refresh every 3 seconds
+      setInterval(async () => {
+        if (acConnected) {
+          await loadAutoClickerCoords();
+        } else {
+          await checkAutoClickerServer();
+        }
+      }, 3000);
+      
+      console.log('Auto Clicker Desktop integration loaded!');
+    })();
+    </script>
+    <!-- ============================ END AUTO CLICKER INTEGRATION ============================ -->
 
 </body>
 </html>
