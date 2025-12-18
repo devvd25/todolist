@@ -1,39 +1,3 @@
-// ===== AUTO TOGGLE TIMER FIX =====
-function clearAutoSendTimers(rowId) {
-  const state = autoSendState[rowId - 1];
-  if (!state) return;
-  if (state.timerId) {
-    clearTimeout(state.timerId);
-    state.timerId = null;
-  }
-  if (state.countdownId) {
-    clearInterval(state.countdownId);
-    state.countdownId = null;
-  }
-}
-
-function startAutoSendFixed(rowId, delayMs) {
-  clearAutoSendTimers(rowId);
-  const state = autoSendState[rowId - 1];
-  state.enabled = true;
-  const endTime = Date.now() + delayMs;
-  // Countdown UI (không drift)
-  state.countdownId = setInterval(() => {
-    const remain = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
-    updateAutoCountdownUI(rowId, remain);
-  }, 300);
-  // Auto send chính xác
-  state.timerId = setTimeout(() => {
-    executeAutoSend(rowId);   // ⚠️ GIỮ NGUYÊN HÀM CŨ CỦA MÀY
-    stopAutoSendFixed(rowId);
-  }, delayMs);
-}
-
-function stopAutoSendFixed(rowId) {
-  clearAutoSendTimers(rowId);
-  autoSendState[rowId - 1].enabled = false;
-  hideAutoUI(rowId);
-}
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -657,11 +621,6 @@ function stopAutoSendFixed(rowId) {
 }
 
         function renderRows() {
-                  // Sau khi render xong, clear autoSendState và reset enabled
-                  autoSendState.forEach((_, idx) => {
-                    clearAutoSendTimers(idx + 1);
-                    autoSendState[idx].enabled = false;
-                  });
             const rowsContainer = document.getElementById('rows');
             rowsContainer.innerHTML = '';
             
@@ -716,7 +675,6 @@ function stopAutoSendFixed(rowId) {
 
 
         function removeRow(rowId) {
-                        clearAutoSendTimers(rowId);
             if (rowData.length <= 1) {
                 alert('Phải có ít nhất 1 hàng!');
                 return;
@@ -823,10 +781,10 @@ if (Array.isArray(JSON.parse(savedData).agentInputs)) {
             const parsed = JSON.parse(savedData);
             if (parsed.autoSendState && Array.isArray(parsed.autoSendState)) {
                 autoSendState = parsed.autoSendState.map(state => ({
-                  enabled: false, // luôn reset
-                  count: state?.count || 0,
-                  timerId: null,
-                  countdownId: null
+                    enabled: state?.enabled || false,
+                    count: state?.count || 0,
+                    timerId: null,
+                    countdownId: null
                 }));
             } else {
                 autoSendState = Array(rowData.length).fill().map(() => ({ enabled: false, count: 0, timerId: null, countdownId: null }));
@@ -1121,35 +1079,35 @@ document.addEventListener('visibilitychange', () => {
         // ===== AUTO-SEND FUNCTIONS =====
         function toggleAutoSend(rowId) {
             const state = autoSendState[rowId - 1];
+            state.enabled = !state.enabled;
+            
             const toggle = document.querySelector(`.row[data-id="${rowId}"] .auto-toggle`);
-            if (state.enabled) {
-              stopAutoSendFixed(rowId);
-              if (toggle) {
-                toggle.classList.remove('active');
-                toggle.title = 'Auto OFF';
-              }
-              hideAutoCountdown(rowId);
-              hideAutoCompleteBadge(rowId);
-            } else {
-              startAutoSendFixed(rowId, 215000); // 3 phút 35 giây
-              if (toggle) {
-                toggle.classList.add('active');
-                toggle.title = 'Auto ON (sẽ gửi 5 lần sau mỗi 3 phút)';
-              }
-              // Reset count và bắt đầu auto-send
-              autoSendState[rowId - 1].count = 0;
-              hideAutoCompleteBadge(rowId);
-              console.log(`⚡ AUTO BẬT - HÀNG ${rowId}: BẮT ĐẦU GỬI 5 LẦN ⚡`);
-              // Gửi ngay lần đầu tiên (auto)
-              if (window.__sendToNgrok) {
-                console.log(`⚡ AUTO-SEND HÀNG ${rowId}: LẦN 1/5 ⚡`);
-                window.__sendToNgrok(rowId, true);
-              }
-              // Sau đó schedule 4 lần tiếp theo (tổng 5 lần)
-              autoSendState[rowId - 1].count = 1;
+            if (toggle) {
+                if (state.enabled) {
+                    toggle.classList.add('active');
+                    toggle.title = 'Auto ON (sẽ gửi 5 lần sau mỗi 3 phút)';
+                    // Reset count và bắt đầu auto-send
+                    state.count = 0;
+                    hideAutoCompleteBadge(rowId);
+                    console.log(`⚡ AUTO BẬT - HÀNG ${rowId}: BẮT ĐẦU GỬI 5 LẦN ⚡`);
+                    // Gửi ngay lần đầu tiên (auto)
+                    if (window.__sendToNgrok) {
+                        console.log(`⚡ AUTO-SEND HÀNG ${rowId}: LẦN 1/5 ⚡`);
+                        window.__sendToNgrok(rowId, true);
+                    }
+                    // Sau đó schedule 4 lần tiếp theo (tổng 5 lần)
+                    state.count = 1;
+                    scheduleAutoSend(rowId);
+                } else {
+                    toggle.classList.remove('active');
+                    toggle.title = 'Auto OFF';
+                    clearAutoSendTimers(rowId);
+                    hideAutoCountdown(rowId);
+                    hideAutoCompleteBadge(rowId);
+                }
             }
             saveData();
-            console.log(`Hàng ${rowId}: Auto-send ${autoSendState[rowId - 1].enabled ? 'BẬT' : 'TẮT'}`);
+            console.log(`Hàng ${rowId}: Auto-send ${state.enabled ? 'BẬT' : 'TẮT'}`);
         }
 
         function clearAutoSendTimers(rowId) {
